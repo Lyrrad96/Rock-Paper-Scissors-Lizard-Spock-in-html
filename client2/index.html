@@ -1,0 +1,440 @@
+ 
+<div id="signDiv">
+	Username: <input id="signDiv-username" type="text"></input><br>
+	Password: <input id="signDiv-password" type="password"></input>
+	<button id="signDiv-signIn">Sign In</button>
+	<button id="signDiv-signUp">Sign Up</button>
+</div>
+ 
+<div id="gameDiv" style="display:none;z-index: 1;">
+	<div id="game" style="position:absolute;width:800;height:600">
+		<canvas id="ctx" width="800" height="600" style="position:absolute;border:1px solid #000000;background: url('./client2/img2/field.jpg');     background-repeat:no-repeat;  background-size: 100% 100%;	"></canvas>
+		<canvas id="ctx-ui" width="800" height="600" style="position:absolute;border:1px solid #000000;"></canvas>
+	</div>
+		
+	<!--Buttons for player2-->
+	<div class="radio-toolbar" style="z-index: 2; position:absolute; bottom: 40; left: 0">
+		<input type="radio" id="r2" name="o" value="r" />
+		<label for="r2">Rock</label>
+  
+		<input type="radio" id="p2" name="o" value="p" />
+		<label for="p2">Paper</label>
+  
+		<input type="radio" id="s2" name="o" value="s" />
+		<label for="s2">Scissors</label>
+  
+		<input type="radio" id="l2" name="o" value="l" />
+		<label for="l2">Lizard</label>
+  
+		<input type="radio" id="S2" name="o" value="S" />
+		<label for="S2">Spock</label>
+		  <!--Submit for player2 store option and print image-->
+		  <div id="player"></div>
+		  <button type="button" onclick="getOption()">Submit</button>
+	</div>
+</div>
+	
+ 
+<div id="belowGame" style="margin-top:520px">	
+	<div id="chat-text" style="width:600px;height:100px;overflow-y:scroll">
+		<div>Hello!</div>
+	</div>
+
+	<form id="chat-form">
+		<input id="chat-input" type="text" style="width:600px"></input>
+	</form>
+</div>
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+	
+	var socket = io();
+	var SIZE = 800;
+	var WIDTH = 800;
+	var HEIGHT = 600;
+	//sign
+	var signDiv = document.getElementById('signDiv');
+	var signDivUsername = document.getElementById('signDiv-username');
+	var signDivSignIn = document.getElementById('signDiv-signIn');
+	var signDivSignUp = document.getElementById('signDiv-signUp');
+	var signDivPassword = document.getElementById('signDiv-password');
+ 
+	signDivSignIn.onclick = function(){
+		socket.emit('signIn',{username:signDivUsername.value,password:signDivPassword.value});
+	}
+	signDivSignUp.onclick = function(){
+		socket.emit('signUp',{username:signDivUsername.value,password:signDivPassword.value});
+	}
+	socket.on('signInResponse',function(data){
+		if(data.success){
+			signDiv.style.display = 'none';
+			gameDiv.style.display = 'inline-block';
+		} else
+			alert("Sign in unsuccessul.");
+	});
+	socket.on('signUpResponse',function(data){
+		if(data.success){
+			alert("Sign up successul.");
+		} else
+			alert("Sign up unsuccessul.");
+	});
+ 
+	//chat
+	var chatText = document.getElementById('chat-text');
+	var chatInput = document.getElementById('chat-input');
+	var chatForm = document.getElementById('chat-form');
+ 
+	socket.on('addToChat',function(data){
+		chatText.innerHTML += '<div>' + data + '</div>';
+	});
+	socket.on('evalAnswer',function(data){
+		console.log(data);
+	});
+ 
+ 
+	
+	chatForm.onsubmit = function(e){
+		e.preventDefault();
+		if(chatInput.value[0] === '/')
+			socket.emit('evalServer',chatInput.value.slice(1));
+		else if(chatInput.value[0] === '@'){
+			//@username,message
+			socket.emit('sendPmToServer',{
+				username:chatInput.value.slice(1,chatInput.value.indexOf(',')),
+				message:chatInput.value.slice(chatInput.value.indexOf(',') + 1)
+			});
+		} else
+			socket.emit('sendMsgToServer',chatInput.value);
+		chatInput.value = '';		
+	}
+
+
+	//game
+	
+	//Array of images
+	var imgArray = {};
+
+	imgArray['r'] = new Image();
+	imgArray['r'].src = "/client2/img2/rock.jpeg";
+
+	imgArray['p'] = new Image();
+		imgArray['p'].src = "/client2/img2/paper.jpeg";
+
+	imgArray['s'] = new Image();
+	imgArray['s'].src = "/client2/img2/scissors.jpeg";
+
+	imgArray['l'] = new Image();
+	imgArray['l'].src = "/client2/img2/lizard.jpeg";
+
+	imgArray['S'] = new Image();
+	imgArray['S'].src = "/client2/img2/spock.jpeg";
+	
+	var ctx = document.getElementById("ctx").getContext("2d");
+	ctx.font = '30px Arial';
+    ctx.fillStyle = "Lime";
+
+	var ctxUi = document.getElementById("ctx-ui").getContext("2d");
+	ctxUi.font = '30px Arial';
+    ctxUi.fillStyle = "Lime";
+ 
+
+ //ctx.drawImage(imgArray.dis['r'],x+10,y+10);
+
+	var Player = function(initPack){
+		var self = {};
+		self.id = initPack.id;
+		self.ch = initPack.ch;
+		self.x = initPack.x;
+		self.y = initPack.y;
+		self.score = initPack.score;
+		
+		self.draw = function(){	
+			if(Player.list[selfId].map !== self.map)
+				return;
+			var x = self.x - Player.list[selfId].x + WIDTH/2;
+			var y = self.y - Player.list[selfId].y + HEIGHT/2;
+		
+			ctxUi.fillText(self.ch,self.x,self.y);
+
+		}
+		Player.list[self.id] = self;
+ 
+		return self;
+	}
+	Player.list = {};
+ /*
+	var Bullet = function(initPack){
+		var self = {};
+		self.id = initPack.id;
+		self.x = initPack.x;
+		self.y = initPack.y;
+		self.map = initPack.map;
+
+		self.draw = function(){
+			if(Player.list[selfId].map !== self.map)
+				return;
+			var width = Img.bullet.width/2;
+			var height = Img.bullet.height/2;
+			
+			var x = self.x - Player.list[selfId].x + WIDTH/2;
+			var y = self.y - Player.list[selfId].y + HEIGHT/2;
+			
+			ctx.drawImage(Img.bullet,
+				0,0,Img.bullet.width,Img.bullet.height,
+				x-width/2,y-height/2,width,height);
+		}
+		
+		Bullet.list[self.id] = self;		
+		return self;
+	}
+	Bullet.list = {};
+ */
+	var selfId = null;
+
+	
+	socket.on('init',function(data){	
+		if(data.selfId)
+			selfId = data.selfId;
+		//{ player : [{id:123,number:'1',x:0,y:0},{id:1,number:'2',x:0,y:0}], bullet: []}
+		for(var i = 0 ; i < data.player.length; i++){
+			new Player(data.player[i]);
+		}
+		/*for(var i = 0 ; i < data.bullet.length; i++){
+			new Bullet(data.bullet[i]);
+		}*/
+	});
+ 
+	socket.on('update',function(data){
+		//{ player : [{id:123,x:0,y:0},{id:1,x:0,y:0}], bullet: []}
+		for(var i = 0 ; i < data.player.length; i++){
+			var pack = data.player[i];
+			var p = Player.list[pack.id];
+			if(p){
+				if(pack.x !== undefined)
+					p.x = pack.x;
+				if(pack.y !== undefined)
+					p.y = pack.y;
+				if(pack.score !== undefined)
+					p.score = pack.score;
+				if(pack.ch !== undefined)
+					p.ch = pack.ch;
+				p.turn = pack.turn;
+			}
+		}/*
+		for(var i = 0 ; i < data.bullet.length; i++){
+			var pack = data.bullet[i];
+			var b = Bullet.list[data.bullet[i].id];
+			if(b){
+				if(pack.x !== undefined)
+					b.x = pack.x;
+				if(pack.y !== undefined)
+					b.y = pack.y;
+			}
+		}*/
+	});
+ 
+	socket.on('remove',function(data){
+		//{player:[12323],bullet:[12323,123123]}
+		for(var i = 0 ; i < data.player.length; i++){
+			delete Player.list[data.player[i]];
+		}/*
+		for(var i = 0 ; i < data.bullet.length; i++){
+			delete Bullet.list[data.bullet[i]];
+		}*/
+	});
+ /*
+	setInterval(function(){
+		if(!selfId)
+			return;
+		ctx.clearRect(0,0,SIZE,SIZE);
+		//drawMap();
+		/*
+		var background = new Image();
+background.src = "/client2/img2/field.png";
+ctx.drawImage(background,0,0);   *
+		drawnames();
+		for(var i in Player.list)
+			Player.list[i].draw();
+	/*	for(var i in Bullet.list)
+			Bullet.list[i].draw();*/
+	//},40);
+ /*
+	var drawMap = function(){
+		var player = Player.list[selfId];
+		var x = WIDTH/2 - player.x;
+		var y = HEIGHT/2 - player.y;
+		ctx.drawImage(Img.map[player.map],x,y);
+		ctx.drawImage(imgArray['r'],x+10,y+10);
+	}
+	*/
+	var drawScore = function(){
+		if(lastScore === Player.list[selfId].score)
+			return;
+		lastScore = Player.list[selfId].score;
+		//ctxUi.clearRect(0,0,50,80);
+		ctxUi.fillStyle = 'Lime';
+		ctxUi.fillText(Player.list[selfId].score,0,30);
+	}
+	var lastScore = null;	
+    var drawChoice = function(choice, x, y){
+		//ctxUi.clearRect(150,150,180,180);
+
+		//var x = WIDTH/2 ;
+		//var y = HEIGHT/2;
+		ctxUi.drawImage(imgArray[choice],x-imgArray[choice].width/2,y-imgArray[choice].height/2);
+		ctxUi.fillText(imgArray[choice].height,x+100,y+80);
+
+}
+var drawnames = function(){
+	ctx.fillText(Player.list[selfId].username,0,200);
+	ctx.fillText(Player.list[selfId].score,0,100);
+}
+/*
+	socket.on('result', function(data){
+		ctxUi.clearRect(0,0,SIZE,SIZE);
+		if(data.result!=undefined)
+		
+		ctxUi.fillText(data.result,0,40);
+		drawChoice(getOption());
+	})
+ *//*
+	document.onkeydown = function (event) {
+        if (event.keyCode === 39)
+          //d
+          socket.emit("keyPress", { inputId: "right", state: true });
+        else if (event.keyCode === 40)
+          //s
+          socket.emit("keyPress", { inputId: "down", state: true });
+        else if (event.keyCode === 37)
+          //a
+          socket.emit("keyPress", { inputId: "left", state: true });
+        else if (event.keyCode === 38)
+          // w
+          socket.emit("keyPress", { inputId: "up", state: true });
+      };
+      document.onkeyup = function (event) {
+        if (event.keyCode === 39)
+          //d
+          socket.emit("keyPress", { inputId: "right", state: false });
+        else if (event.keyCode === 40)
+          //s
+          socket.emit("keyPress", { inputId: "down", state: false });
+        else if (event.keyCode === 37)
+          //a
+          socket.emit("keyPress", { inputId: "left", state: false });
+        else if (event.keyCode === 38)
+          // w
+          socket.emit("keyPress", { inputId: "up", state: false });
+      };
+	document.onmousedown = function(event){
+		socket.emit('keyPress',{inputId:'attack',state:true});
+	}
+	document.onmouseup = function(event){
+		socket.emit('keyPress',{inputId:'attack',state:false});
+	}
+	document.onmousemove = function(event){
+		var x = -250 + event.clientX - 8;
+		var y = -250 + event.clientY - 8;
+		var angle = Math.atan2(y,x) / Math.PI * 180;
+		socket.emit('keyPress',{inputId:'mouseAngle',state:angle});
+	}*/
+ 
+	document.getOption = function (event) {
+        var ele = document.getElementsByName("o");
+        for (i = 0; i < ele.length; i++) {
+          if (ele[i].checked) {
+            socket.emit("choice", { ch: ele[i].value,turn: 1 });
+			//ctxUi.fillText(turn,0,40);
+			break;
+			}
+        }
+
+		socket.on('display',  function(data){
+	
+	var y = 20;
+	var d = 20;
+	var x1 = WIDTH/4;
+	var x2 = WIDTH*3/4 - d;
+if(data==null)
+	return;
+	var ele = document.getElementsByName("o");
+
+	ctxUi.clearRect(0,0,SIZE,SIZE);
+	ctxUi.fillText(data.win+" wins", WIDTH/2 - y - y, y);
+	ctxUi.fillText(data.name1, x1, y);
+	ctxUi.fillText(data.name2, x2, y);
+	ctxUi.fillText(data.ch1, x1, y+=y);
+	ctxUi.fillText(data.ch2, x2, y);
+	ctxUi.fillText(data.score1, x1, y+=y);
+	ctxUi.fillText(data.score2, x2, y);
+	
+	if(data.result!=undefined)
+			ctxUi.fillText("data.result",0,390);
+			
+	drawChoice(data.ch1, x1, HEIGHT/2);
+	drawChoice(data.ch2, x2, HEIGHT/2);
+});
+ 
+
+	 
+	  document.oncontextmenu = function(event){
+		event.preventDefault();
+	}
+	}
+	/*
+socket.on('display',  function(data){
+	var x1 = 20;
+	var x2 = 520;
+	var y = 40;
+	var d = 20;
+if(data==null)
+	return;
+	ctxUi.clearRect(0,0,SIZE,SIZE);
+	ctxUi.fillText(data.name1, x1, y);
+	ctxUi.fillText(data.name2, x2, y);
+	ctxUi.fillText(data.ch1, x1, y+d);
+	ctxUi.fillText(data.ch2, x2, y+d);
+	ctxUi.fillText(data.win, x2/2, y);
+});
+ */
+</script>
+
+<style>
+	/*style to convert radio buttons to regular buttons*/
+	.radio-toolbar {
+	  margin: 10px;
+	}
+
+	.radio-toolbar input[type="radio"] {
+	  opacity: 0;
+	  position: absolute;
+	  width: 0;
+	}
+
+	.radio-toolbar label {
+	  display: inline-block;
+	  /*background-image: url(imgArray[ele1[1].value])*/
+	  /*height: 100px; /* You must set a specified height */
+	  background-color: #ddd;
+	  padding: 10px 20px;
+	  font-family: sans-serif, Arial;
+	  font-size: 16px;
+	  border: 2px solid #444;
+	  border-radius: 4px;
+	  width: 80px;
+	  bottom: 0px;
+	}
+
+	.radio-toolbar label:hover {
+	  background-color: #dfd;
+	  cursor: pointer;
+	}
+	.radio-toolbar input[type="radio"]:focus + label {
+	  border: 2px dashed #444;
+	}
+
+	.radio-toolbar input[type="radio"]:checked + label {
+	  background-color: #bfb;
+	  border-color: #4c4;
+	}
+  </style>
