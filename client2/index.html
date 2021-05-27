@@ -109,25 +109,26 @@
 	}
 
 
+
 	//game
 	
 	//Array of images
 	var imgArray = {};
 
 	imgArray['r'] = new Image();
-	imgArray['r'].src = "/client2/img2/rock.jpeg";
+	imgArray['r'].src = "/client2/img2/rock.png";
 
 	imgArray['p'] = new Image();
-		imgArray['p'].src = "/client2/img2/paper.jpeg";
+		imgArray['p'].src = "/client2/img2/paper.png";
 
 	imgArray['s'] = new Image();
-	imgArray['s'].src = "/client2/img2/scissors.jpeg";
+	imgArray['s'].src = "/client2/img2/scissors.png";
 
 	imgArray['l'] = new Image();
-	imgArray['l'].src = "/client2/img2/lizard.jpeg";
+	imgArray['l'].src = "/client2/img2/lizard.png";
 
 	imgArray['S'] = new Image();
-	imgArray['S'].src = "/client2/img2/spock.jpeg";
+	imgArray['S'].src = "/client2/img2/spock.png";
 	
 	var ctx = document.getElementById("ctx").getContext("2d");
 	ctx.font = '30px Arial';
@@ -267,6 +268,19 @@ ctx.drawImage(background,0,0);   *
 		ctx.drawImage(imgArray['r'],x+10,y+10);
 	}
 	*/
+
+
+	function mirrorImage(ctx, image, x, y, horizontal = false, vertical = false, a = 0, b = 0){
+    ctx.save();  // save the current canvas state
+    ctx.setTransform(
+        horizontal ? -1 : 1, 0, // set the direction of x axis
+        0, vertical ? -1 : 1,   // set the direction of y axis
+        a + horizontal ? image.width : 0, // set the x origin
+        b + vertical ? image.height : 0   // set the y origin
+    );
+    ctx.drawImage(image,-x,y);
+    ctx.restore(); // restore the state as it was when this function was called
+}
 	var drawScore = function(){
 		if(lastScore === Player.list[selfId].score)
 			return;
@@ -276,13 +290,35 @@ ctx.drawImage(background,0,0);   *
 		ctxUi.fillText(Player.list[selfId].score,0,30);
 	}
 	var lastScore = null;	
-    var drawChoice = function(choice, x, y){
+    var drawChoice = function(choice, x, y, z){
+		//ctxUi.clearRect(0,0,SIZE,SIZE);
 		//ctxUi.clearRect(150,150,180,180);
+		x = x-imgArray[choice].width/2+20;
+		y = y-imgArray[choice].height/2;
+	/*	image = imgArray[choice];
+		var horizontal = true;
+		var vertical = false;
+		if(1){
+		ctx.save();  // save the current canvas state
+    ctx.setTransform(
+        horizontal ? -1 : 1, 0, // set the direction of x axis
+        0, vertical ? -1 : 1,   // set the direction of y axis
+        0 + horizontal ? image.width : 0, // set the x origin
+        0 + vertical ? image.height : 0   // set the y origin
+    );
+		
 
+    ctx.drawImage(image,x,y);
+    ctx.restore(); // restore the state as it was when this function was called
+		}
+		else*/
 		//var x = WIDTH/2 ;
 		//var y = HEIGHT/2;
-		ctxUi.drawImage(imgArray[choice],x-imgArray[choice].width/2,y-imgArray[choice].height/2);
-		ctxUi.fillText(imgArray[choice].height,x+100,y+80);
+		//mirrorImage(ctxUi, imgArray[choice], x, y, true, false, 0, 0);  // horizontal and vertical mirror
+		if(z)
+			ctxUi.drawImage(imgArray[choice], x, y);
+		else
+			mirrorImage(ctxUi, imgArray[choice], x, y, true, false, 0, 0);  // horizontal and vertical mirror
 
 }
 var drawnames = function(){
@@ -360,19 +396,16 @@ if(data==null)
 	var ele = document.getElementsByName("o");
 
 	ctxUi.clearRect(0,0,SIZE,SIZE);
-	ctxUi.fillText(data.win+" wins", WIDTH/2 - y - y, y);
+	ctxUi.fillText(data.win, WIDTH/2 - y - y, y);
 	ctxUi.fillText(data.name1, x1, y);
 	ctxUi.fillText(data.name2, x2, y);
 	ctxUi.fillText(data.ch1, x1, y+=y);
 	ctxUi.fillText(data.ch2, x2, y);
 	ctxUi.fillText(data.score1, x1, y+=y);
 	ctxUi.fillText(data.score2, x2, y);
-	
-	if(data.result!=undefined)
-			ctxUi.fillText("data.result",0,390);
-			
-	drawChoice(data.ch1, x1, HEIGHT/2);
-	drawChoice(data.ch2, x2, HEIGHT/2);
+				
+	drawChoice(data.ch1, x1, HEIGHT/2, 1);
+	drawChoice(data.ch2, x2, HEIGHT/2, 0);
 });
  
 
